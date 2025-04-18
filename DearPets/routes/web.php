@@ -1,39 +1,47 @@
 <?php
 
+use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PostController;
-use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\CommentController;
-
-//use App\Http\Controllers\PostController;
 use App\Http\Controllers\UserController;
-//use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\API\MessageController;
+use App\Http\Controllers\DashboardController;
 
+// Welcome Page
 Route::get('/', function () {
     return view('welcome');
 });
 
-// Dashboard showing personal feed
+// Dashboard (personal feed or dashboard home)
 Route::get('/dashboard', [PostController::class, 'index'])->middleware(['auth', 'verified'])->name('dashboard');
 
-// Profile Routes
+// Authenticated Routes
 Route::middleware('auth')->group(function () {
+
+    // Profile Routes
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
-    // Post creation and favoriting
+    // Posts & Favorites
     Route::post('/post', [PostController::class, 'create'])->name('post.create');
     Route::post('/post/{post}/favorite', [PostController::class, 'favorite'])->name('post.favorite');
 
-    // Search & Viewing other profiles
+    // Comments
+    Route::post('/post/{post}/comment', [CommentController::class, 'store'])->name('post.comment');
+
+    // User Search & Profiles
     Route::get('/search', [UserController::class, 'search'])->name('user.search');
     Route::get('/user/{id}', [UserController::class, 'show'])->name('user.profile');
-
     Route::get('/profile/{id}', [UserController::class, 'show'])->name('profile.view');
 
+    // Messaging System
+    Route::post('/messages/send', [MessageController::class, 'sendMessage'])->name('messages.send');
+    Route::get('/messages/{userId}', [MessageController::class, 'fetchMessages'])->name('messages.fetch');
+    Route::get('/inbox', [MessageController::class, 'inbox'])->name('messages.inbox');
+    Route::get('/chat/{user}', [MessageController::class, 'chatWithUser'])->name('chat.show');
 });
 
+// Auth routes (login, register, etc.)
 require __DIR__.'/auth.php';
-Route::post('/post/{post}/comment', [CommentController::class, 'store'])->name('post.comment');
-

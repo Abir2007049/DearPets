@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Post; 
+use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Favorite;
 use Illuminate\Http\Request; 
@@ -11,13 +12,12 @@ use Illuminate\Http\Request;
 class PostController extends Controller
 {
     public function index()
-    {
-        // Fetch posts excluding the current user's own posts
-        $posts = Post::where('user_id', '!=', Auth::id())->latest()->get();
+{
+    $posts = Post::where('user_id', '!=', auth()->id())->orderBy('created_at', 'desc')->get();
+    $users = User::where('id', '!=', auth()->id())->get(); // 👈 Add this line
 
-        return view('dashboard', compact('posts'));
-    }
-
+    return view('dashboard', compact('posts', 'users')); // 👈 Now you're passing $users
+}
 
 
     public function create(Request $request)
@@ -54,18 +54,16 @@ class PostController extends Controller
     public function favorite(Post $post)
 {
     $user = Auth::user();
-    
-    // Toggle like/unlike
+
     if ($post->isLikedBy($user)) {
-        // Unlike
         $post->likes()->where('user_id', $user->id)->delete();
         return response()->json(['liked' => false]);
     } else {
-        // Like
         $post->likes()->create(['user_id' => $user->id]);
         return response()->json(['liked' => true]);
     }
 }
+
 
     
 

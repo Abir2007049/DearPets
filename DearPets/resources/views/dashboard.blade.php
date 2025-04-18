@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Social Media - Pet Lovers</title>
-    
+
     <!-- Bootstrap 5 -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -27,6 +27,22 @@
         .post-img {
             max-height: 400px;
             object-fit: cover;
+        }
+        .chat-bubble {
+            padding: 10px;
+            margin-bottom: 5px;
+            border-radius: 10px;
+            max-width: 80%;
+        }
+        .text-end {
+            margin-left: auto;
+        }
+        .chat-wrapper {
+            height: 200px;
+            overflow-y: scroll;
+            background: #fff;
+            padding: 10px;
+            border: 1px solid #ccc;
         }
     </style>
 </head>
@@ -57,7 +73,6 @@
                     </form>
                 </div>
 
-                <!-- Posts Section -->
                 <h3 class="mb-3">Your Posts</h3>
                 @if ($posts->isEmpty())
                     <p class="text-muted">No posts found.</p>
@@ -80,7 +95,6 @@
                                 @endif
 
                                 <div class="d-flex justify-content-between">
-                                    <!-- Like Button -->
                                     <form id="likeForm_{{ $post->id }}" action="{{ route('post.favorite', $post->id) }}" method="POST">
                                         @csrf
                                         <button id="likeBtn_{{ $post->id }}" type="submit" class="btn {{ $post->isLikedBy(Auth::user()) ? 'btn-danger' : 'btn-outline-danger' }}">
@@ -89,27 +103,22 @@
                                     </form>
                                 </div>
 
-                                <!-- Toggle Comments Button -->
                                 <button id="toggleCommentsBtn_{{ $post->id }}" class="btn btn-info mt-2 w-100">
                                     Show Comments
                                 </button>
 
-                                <!-- Comments Section -->
                                 <div id="commentsSection_{{ $post->id }}" class="comments-section" style="display: none;">
                                     @foreach ($post->comments as $comment)
-                                        <div class="bg-light p-3 rounded-lg mt-2">
-                                            <p class="text-sm text-dark"><strong>{{ $comment->user->name }}:</strong> {{ $comment->content }}</p>
+                                        <div class="bg-light p-3 rounded mt-2">
+                                            <p class="text-dark"><strong>{{ $comment->user->name }}:</strong> {{ $comment->content }}</p>
                                         </div>
                                     @endforeach
 
-                                    <!-- Add Comment Form -->
-                                    <form action="{{ route('post.comment', $post->id) }}" method="POST" class="mt-4">
+                                    <form action="{{ route('post.comment', $post->id) }}" method="POST" class="mt-3">
                                         @csrf
                                         <div class="d-flex gap-2">
                                             <input type="text" name="content" placeholder="Write a comment..." class="form-control">
-                                            <button type="submit" class="btn btn-primary">
-                                                Comment
-                                            </button>
+                                            <button type="submit" class="btn btn-primary">Comment</button>
                                         </div>
                                     </form>
                                 </div>
@@ -119,7 +128,7 @@
                 @endif
             </div>
 
-            <!-- Search Sidebar -->
+            <!-- Search & Chat Sidebar -->
             <div class="col-md-3">
                 <div class="card p-3">
                     <h5>Search Users</h5>
@@ -128,91 +137,119 @@
                         <button type="submit" class="btn btn-info mt-2 w-100">Search</button>
                     </form>
                 </div>
+
+                <div class="card p-3 mt-3">
+                    <a href="{{ route('messages.inbox') }}" class="btn btn-outline-primary mt-2 w-100">📥 Inbox</a>
+
+                    <h5>Chat</h5>
+                    <select id="chatUser" class="form-select mb-2">
+                        <option value="" selected disabled>Select a user</option>
+                        @foreach ($users as $user)
+                            @if ($user->id !== Auth::id())
+                                <option value="{{ $user->id }}">{{ $user->name }}</option>
+                            @endif
+                        @endforeach
+                    </select>
+
+                    <div id="chatMessages" class="chat-wrapper mb-2"></div>
+
+                    <div class="input-group">
+                        <input type="text" id="chatInput" class="form-control" placeholder="Type a message">
+                        <button class="btn btn-primary" id="sendBtn">Send</button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- JavaScript for Like Button Toggle -->
+    <!-- Scripts -->
     <script>
-    document.querySelectorAll('[id^="likeBtn_"]').forEach(function(button) {
-        button.addEventListener('click', function(event) {
-            event.preventDefault();
-            var postId = this.id.split('_')[1]; 
-            var form = document.getElementById('likeForm_' + postId);
-            var likeButton = document.getElementById('likeBtn_' + postId);
-
-            fetch(form.action, {
-                method: 'POST',
-                body: new FormData(form),
-                headers: {
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.liked) {
-                    likeButton.classList.remove('btn-outline-danger');
-                    likeButton.classList.add('btn-danger');
-                    likeButton.innerHTML = "❤️ Liked";  // Update text
-                } else {
-                    likeButton.classList.remove('btn-danger');
-                    likeButton.classList.add('btn-outline-danger');
-                    likeButton.innerHTML = "🤍 Like";  // Update text
-                }
-            })
-            .catch(error => console.error('Error:', error));
-        });
-    });
     document.addEventListener("DOMContentLoaded", function () {
-    // Like Button Toggle
-    document.querySelectorAll('[id^="likeBtn_"]').forEach(function (button) {
-        button.addEventListener("click", function (event) {
-            event.preventDefault();
-            var postId = this.id.split("_")[1];
-            var form = document.getElementById("likeForm_" + postId);
-            var likeButton = document.getElementById("likeBtn_" + postId);
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute("content");
+        let selectedUserId = null;
 
-            fetch(form.action, {
-                method: "POST",
-                body: new FormData(form),
-                headers: {
-                    "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').getAttribute("content"),
-                },
-            })
-                .then((response) => response.json())
-                .then((data) => {
-                    if (data.liked) {
-                        likeButton.classList.remove("btn-outline-danger");
-                        likeButton.classList.add("btn-danger");
-                        likeButton.innerHTML = "❤️ Liked"; // Change button text
-                    } else {
-                        likeButton.classList.remove("btn-danger");
-                        likeButton.classList.add("btn-outline-danger");
-                        likeButton.innerHTML = "🤍 Like"; // Change button text
-                    }
+        document.querySelectorAll('[id^="likeBtn_"]').forEach(button => {
+            button.addEventListener("click", function (event) {
+                event.preventDefault();
+                const postId = this.id.split("_")[1];
+                const form = document.getElementById("likeForm_" + postId);
+
+                fetch(form.action, {
+                    method: "POST",
+                    body: new FormData(form),
+                    headers: { "X-CSRF-TOKEN": csrfToken },
                 })
-                .catch((error) => console.error("Error:", error));
+                .then(res => res.json())
+                .then(data => {
+                    const likeBtn = document.getElementById("likeBtn_" + postId);
+                    likeBtn.className = 'btn ' + (data.liked ? 'btn-danger' : 'btn-outline-danger');
+                    likeBtn.textContent = data.liked ? "❤️ Liked" : "🤍 Like";
+                })
+                .catch(err => console.error("Like error:", err));
+            });
         });
-    });
 
-    // Toggle Comments Section
-    document.querySelectorAll('[id^="toggleCommentsBtn_"]').forEach(function (button) {
-        button.addEventListener("click", function () {
-            var postId = this.id.split("_")[1];
-            var commentsSection = document.getElementById("commentsSection_" + postId);
-
-            if (commentsSection.style.display === "none" || commentsSection.style.display === "") {
-                commentsSection.style.display = "block";
-                this.textContent = "Hide Comments"; 
-            } else {
-                commentsSection.style.display = "none";
-                this.textContent = "Show Comments"; 
-            }
+        document.querySelectorAll('[id^="toggleCommentsBtn_"]').forEach(button => {
+            button.addEventListener("click", function () {
+                const postId = this.id.split("_")[1];
+                const section = document.getElementById("commentsSection_" + postId);
+                const show = section.style.display === "none" || section.style.display === "";
+                section.style.display = show ? "block" : "none";
+                this.textContent = show ? "Hide Comments" : "Show Comments";
+            });
         });
+
+        // Chat Events
+        document.getElementById("chatUser").addEventListener("change", function () {
+            selectedUserId = this.value;
+            fetchMessages();
+        });
+
+        document.getElementById("sendBtn").addEventListener("click", function () {
+            const input = document.getElementById("chatInput");
+            const message = input.value.trim();
+            if (!message || !selectedUserId) return;
+
+            fetch('/messages/send', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken
+                },
+                body: JSON.stringify({
+                    receiver_id: selectedUserId,
+                    content: message
+                })
+            })
+            .then(res => res.json())
+            .then(() => {
+                input.value = '';
+                fetchMessages();
+            })
+            .catch(err => console.error("Message send error:", err));
+        });
+
+        function fetchMessages() {
+            if (!selectedUserId) return;
+
+            fetch(`/messages/${selectedUserId}`)
+            .then(res => res.json())
+            .then(messages => renderChat(messages))
+            .catch(err => console.error("Fetch error:", err));
+        }
+
+        function renderChat(messages) {
+            const chatBox = document.getElementById("chatMessages");
+            chatBox.innerHTML = '';
+            messages.forEach(msg => {
+                const bubble = document.createElement("div");
+                bubble.className = "chat-bubble " + (msg.sender_id == {{ Auth::id() }} ? "bg-primary text-white text-end" : "bg-light text-dark");
+                bubble.textContent = msg.content;
+                chatBox.appendChild(bubble);
+            });
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
     });
-});
-
-</script>
-
+    </script>
 </body>
 </html>
