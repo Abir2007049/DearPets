@@ -58,6 +58,10 @@
                     <a href="{{ route('profile.edit') }}" class="btn btn-primary w-100">Edit Profile</a>
                     <a href="{{ route('profile.view', Auth::user()->id) }}" class="mt-2 d-block text-decoration-none">View Profile</a>
                 </div>
+                <a href="{{ route('friend.requests') }}" class="btn btn-outline-warning w-100 mt-2">
+    🧾 Friend Requests
+</a>
+
             </div>
 
             <!-- Main Feed -->

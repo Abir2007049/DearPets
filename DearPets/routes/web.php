@@ -45,3 +45,23 @@ Route::middleware('auth')->group(function () {
 
 // Auth routes (login, register, etc.)
 require __DIR__.'/auth.php';
+
+
+//friendship
+// routes/web.php
+
+use App\Http\Controllers\FriendshipController;
+
+Route::middleware(['auth'])->group(function () {
+    Route::get('/friend-requests', [FriendshipController::class, 'requests'])->name('friend.requests');
+    Route::post('/friend/accept/{id}', [FriendshipController::class, 'accept'])->name('friend.accept');
+    Route::post('/friend/reject/{id}', [FriendshipController::class, 'reject'])->name('friend.reject');
+});
+
+Route::post('/friend/request/{id}', [App\Http\Controllers\FriendshipController::class, 'sendRequest'])->name('friend.request');
+Route::post('/friend/unfriend/{user_id}', [FriendshipController::class, 'unfriend'])->name('friend.unfriend');
+
+Route::get('/profile/{id}', [\App\Http\Controllers\FriendshipController::class, 'showFriendList'])->name('profile.show');
+
+
+

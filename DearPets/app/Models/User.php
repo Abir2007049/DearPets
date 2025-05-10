@@ -29,5 +29,26 @@ class User extends Authenticatable
 {
     return $this->hasMany(Post::class);
 }
+// app/Models/User.php
+
+public function sentFriendRequests()
+{
+    return $this->hasMany(Friendship::class, 'sender_id');
+}
+
+public function receivedFriendRequests()
+{
+    return $this->hasMany(Friendship::class, 'receiver_id');
+}
+
+public function friends()
+{
+    return User::whereHas('sentFriendRequests', function ($q) {
+        $q->where('receiver_id', $this->id)->where('status', 'accepted');
+    })->orWhereHas('receivedFriendRequests', function ($q) {
+        $q->where('sender_id', $this->id)->where('status', 'accepted');
+    });
+}
+
 
 }
